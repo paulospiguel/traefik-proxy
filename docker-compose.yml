@@ -5,37 +5,60 @@ services:
     build: ./client
     container_name: web_app
     restart: always
-    environment:
-      - VIRTUAL_HOST=admin.doggie.local
-      - VIRTUAL_PORT=3000
+    # environment:
+    #   - VIRTUAL_HOST=admin.doggie.local
+    #   - VIRTUAL_PORT=3000
     volumes:
       - ./client:/usr/src/app
       - /usr/src/app/node_modules
       - /usr/src/app/.next
     ports:
       - 3000:3000
+    labels:
+      - "traefik.enable=true"
+      # - "traefik.docker.network=proxy"
+      - "traefik.http.services.web.loadbalancer.server.port=3000"
+      - "traefik.http.routers.web.rule=Host(`admin.doggie.local`)"
 
   api:
     build: ./backend
     container_name: api_app
     restart: always
-    environment:
-      - VIRTUAL_HOST=api.doggie.local
-      - VIRTUAL_PORT=3333
+    # environment:
+    #   - VIRTUAL_HOST=api.doggie.local
+    #   - VIRTUAL_PORT=3333
     ports:
       - 3333:3333
     volumes:
       - ./backend:/usr/src/app
       - /usr/src/app/node_modules
+    labels:
+      - "traefik.enable=true"
+      # - "traefik.docker.network=proxy"
+      - "traefik.http.services.api.loadbalancer.server.port=3333"
+      - "traefik.http.routers.api.rule=Host(`api.doggie.local`)"
 
-  nginx-proxy:
-    image: jwilder/nginx-proxy
-    container_name: nginx-proxy
-    restart: always
-    volumes:
-      - /var/run/docker.sock:/tmp/docker.sock:ro
+  # nginx-proxy:
+  #   image: jwilder/nginx-proxy
+  #   container_name: nginx-proxy
+  #   restart: always
+  #   volumes:
+  #     - /var/run/docker.sock:/tmp/docker.sock:ro
+  #   ports:
+  #     - 80:80
+  #   depends_on:
+  #     - api
+  #     - web
+
+  traefik:
+    image: "traefik:v2.6"
+    command:
+      - --accesslog
+      - --api.insecure=true
+      - --providers.docker
+      - --providers.docker.exposedbydefault=false
     ports:
-      - 80:80
-    depends_on:
-      - api
-      - web
+      - "80:80"
+      - "8080:8080"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
