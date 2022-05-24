@@ -4,11 +4,14 @@ services:
   web:
     build: ./client
     container_name: web_app
+    restart: always
+    environment:
+      - VIRTUAL_HOST=admin.doggie.local
+      - VIRTUAL_PORT=3000
     volumes:
       - ./client:/usr/src/app
       - /usr/src/app/node_modules
       - /usr/src/app/.next
-    restart: always
     ports:
       - 3000:3000
 
@@ -16,11 +19,23 @@ services:
     build: ./backend
     container_name: api_app
     restart: always
+    environment:
+      - VIRTUAL_HOST=api.doggie.local
+      - VIRTUAL_PORT=3333
     ports:
       - 3333:3333
     volumes:
       - ./backend:/usr/src/app
       - /usr/src/app/node_modules
 
-volumes:
-  nodemodules: {}
+  nginx-proxy:
+    image: jwilder/nginx-proxy
+    container_name: nginx-proxy
+    restart: always
+    volumes:
+      - /var/run/docker.sock:/tmp/docker.sock:ro
+    ports:
+      - 80:80
+    depends_on:
+      - api
+      - web
